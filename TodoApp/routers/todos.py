@@ -12,7 +12,7 @@ from database import SessionLocal
 from models import Todos
 
 
-router = APIRouter()
+router = APIRouter(tags=["todos"])
 
 
 def get_db():
@@ -36,7 +36,7 @@ class TodoRequest(BaseModel):
     complete: bool
 
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("/todos", status_code=status.HTTP_200_OK)
 async def read_all(db: db_dependency):
     """Return all todos from the database"""
     return db.query(Todos).all()
