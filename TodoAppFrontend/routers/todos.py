@@ -1,7 +1,5 @@
 import sys
 
-import jinja2
-
 sys.path.append("..")
 
 from typing import Optional
