@@ -11,10 +11,13 @@ from pydantic import BaseModel
 from database import SessionLocal
 from models import Users
 
+import os
+
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-SECRET_KEY = "52d287e48fd2ad86d9d36d9f20662c220243786db5575ce3866f2b4ba48d35cd"
-ALGORITHM = "HS256"
+SECRET_KEY = os.environ.get("SECRET_KEY")
+ALGORITHM = os.environ.get("ALGORITHM")
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -27,6 +30,7 @@ class CreateUserREquest(BaseModel):
     email: str
     first_name: str
     last_name: str
+    phone_number: str
     password: str
     role: str
 
@@ -92,7 +96,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_user(db: db_dependency, user_request: CreateUserREquest):
-    """Get authenticated user"""
+    """Create new user in the db"""
     email = db.query(Users).filter(Users.email == user_request.email).first()
     if email:
         raise HTTPException(
@@ -102,7 +106,15 @@ async def create_user(db: db_dependency, user_request: CreateUserREquest):
     username = db.query(Users).filter(Users.username == user_request.username).first()
     if username:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="username is taken"
+            status_code=status.HTTP_403_FORBIDDEN, detail="username already exists"
+        )
+
+    phone_number = (
+        db.query(Users).filter(Users.phone_number == user_request.phone_number).first()
+    )
+    if phone_number:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="phone number already exists"
         )
 
     create_user_model = Users(
@@ -110,6 +122,7 @@ async def create_user(db: db_dependency, user_request: CreateUserREquest):
         username=user_request.username,
         first_name=user_request.first_name,
         last_name=user_request.last_name,
+        phone_number=user_request.phone_number,
         role=user_request.role,
         hashed_password=bcrypt_context.hash(user_request.password),
         is_active=True,

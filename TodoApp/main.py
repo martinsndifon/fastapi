@@ -1,6 +1,10 @@
 """
 Main entry to the application
 """
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 from database import engine
 from models import Base
