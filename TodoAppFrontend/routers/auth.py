@@ -1,7 +1,8 @@
 import sys
+
 sys.path.append("..")
 
-from fastapi import Depends, HTTPException, status, APIRouter
+from fastapi import Depends, HTTPException, status, APIRouter, Request
 from pydantic import BaseModel
 from typing import Optional
 import models
@@ -12,9 +13,14 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
 
 SECRET_KEY = "KlgH6AzYDeZeGwD288to79I3vTHT8wp7"
 ALGORITHM = "HS256"
+
+templates = Jinja2Templates(directory="templates")
 
 
 class CreateUser(BaseModel):
@@ -33,9 +39,7 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl="token")
 
 
 router = APIRouter(
-    prefix="/auth",
-    tags=["auth"],
-    responses={401: {"user": "Not authorized"}}
+    prefix="/auth", tags=["auth"], responses={401: {"user": "Not authorized"}}
 )
 
 
@@ -56,9 +60,7 @@ def verify_password(plain_password, hashed_password):
 
 
 def authenticate_user(username: str, password: str, db):
-    user = db.query(models.Users)\
-        .filter(models.Users.username == username)\
-        .first()
+    user = db.query(models.Users).filter(models.Users.username == username).first()
 
     if not user:
         return False
@@ -67,9 +69,9 @@ def authenticate_user(username: str, password: str, db):
     return user
 
 
-def create_access_token(username: str, user_id: int,
-                        expires_delta: Optional[timedelta] = None):
-
+def create_access_token(
+    username: str, user_id: int, expires_delta: Optional[timedelta] = None
+):
     encode = {"sub": username, "id": user_id}
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -109,19 +111,30 @@ async def create_new_user(create_user: CreateUser, db: Session = Depends(get_db)
 
 
 @router.post("/token")
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(),
-                                 db: Session = Depends(get_db)):
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise token_exception()
     token_expires = timedelta(minutes=20)
-    token = create_access_token(user.username,
-                                user.id,
-                                expires_delta=token_expires)
+    token = create_access_token(user.username, user.id, expires_delta=token_expires)
     return {"token": token}
 
 
-#Exceptions
+@router.get("/", response_class=HTMLResponse)
+async def authentication_page(request: Request):
+    """Render the login page"""
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@router.get("/register", response_class=HTMLResponse)
+async def register(request: Request):
+    """Render the sign up page"""
+    return templates.TemplateResponse("register.html", {"request": request})
+
+
+# Exceptions
 def get_user_exception():
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -138,15 +151,3 @@ def token_exception():
         headers={"WWW-Authenticate": "Bearer"},
     )
     return token_exception_response
-
-
-
-
-
-
-
-
-
-
-
-
