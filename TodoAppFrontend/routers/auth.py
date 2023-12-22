@@ -98,10 +98,12 @@ async def get_current_user(request: Request):
         username: str = payload.get("sub")
         user_id: int = payload.get("id")
         if username is None or user_id is None:
-            logout(request)
+            print("DEBUG: username or user_id is None")
+            await logout(request)
         return {"username": username, "id": user_id}
-    except JWTError:
-        raise HTTPException(status_code=404, details="Not Found")
+    except JWTError as e:
+        print(f"JWT ERROR: {e}")
+        await logout(request)
 
 
 @router.post("/token")
@@ -113,7 +115,7 @@ async def login_for_access_token(
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         return False
-    token_expires = timedelta(minutes=60)
+    token_expires = timedelta(minutes=1)
     token = create_access_token(user.username, user.id, expires_delta=token_expires)
 
     response.set_cookie(key="access_token", value=token, httponly=True)
@@ -151,14 +153,15 @@ async def login(request: Request, db: db_dependency):
         )
 
 
-@router.get("/logout")
+@router.get("/logout", response_class=HTMLResponse)
 async def logout(request: Request):
     """Logout the user"""
-    msg = "logout Successful"
+    msg = "Logout Successful"
     response = templates.TemplateResponse(
         "login.html", {"request": request, "msg": msg}
     )
     response.delete_cookie(key="access_token")
+    print("DEBUG: Logout function")
     return response
 
 
