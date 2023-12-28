@@ -186,10 +186,22 @@ async def register_user(
     validation1 = (
         db.query(models.Users).filter(models.Users.username == username).first()
     )
+    if validation1 is not None:
+        msg = "username is already in use"
+        return templates.TemplateResponse(
+            "register.html", {"request": request, "msg": msg}
+        )
+
     validation2 = db.query(models.Users).filter(models.Users.email == email).first()
 
-    if password != password or validation1 is None or validation2 is None:
-        msg = "Invalid registration request"
+    if validation2 is not None:
+        msg = "Email address already exist"
+        return templates.TemplateResponse(
+            "register.html", {"request": request, "msg": msg}
+        )
+
+    if password != password2:
+        msg = "The passwords should be the same"
         return templates.TemplateResponse(
             "register.html", {"request": request, "msg": msg}
         )
